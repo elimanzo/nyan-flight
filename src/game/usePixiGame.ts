@@ -25,8 +25,8 @@ type PipeChild = Sprite | TilingSprite | Graphics;
 
 const rainbowColors = ["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc"];
 
-const PIPE_CAP_SOURCE = { width: 284, height: 439 } as const;
-const PIPE_BODY_SOURCE = { width: 304, height: 442 } as const;
+const PIPE_CAP_SOURCE = { width: 181, height: 278 } as const;
+const PIPE_BODY_SOURCE = { width: 181, height: 278 } as const;
 const CAT_SOURCE_WIDTH = 384;
 const CAT_TARGET_WIDTH = 96;
 const CAT_SCALE = CAT_TARGET_WIDTH / CAT_SOURCE_WIDTH;
@@ -53,7 +53,15 @@ const DEBUG_COLORS = {
   bounds: 0x3b82f6,
 } as const;
 
-const getConstrainedWidth = () => Math.min(window.innerWidth, 1000);
+const VIEWPORT_MAX_WIDTH = 1000;
+const getConstrainedWidth = () =>
+  Math.min(window.innerWidth, VIEWPORT_MAX_WIDTH);
+
+const applyCanvasAlignment = (canvas: HTMLCanvasElement) => {
+  const overflow = window.innerWidth - VIEWPORT_MAX_WIDTH;
+  canvas.style.position = "relative";
+  canvas.style.left = overflow > 0 ? `-${overflow / 2}px` : "0px";
+};
 
 const getCatFrame = (status: GameStatus, velocity: number): number => {
   if (status === "idle") return 0;
@@ -63,11 +71,11 @@ const getCatFrame = (status: GameStatus, velocity: number): number => {
 };
 
 const computePipeGap = (score: number, difficulty: number) =>
-  Math.max(DEFAULT_CONFIG.pipe.gap - score * 2 - difficulty * 8, 120);
+  Math.max(DEFAULT_CONFIG.pipe.gap - score * 4 - difficulty * 12, 140);
 const computePipeSpeed = (score: number, difficulty: number) =>
   Math.min(DEFAULT_CONFIG.pipe.speed + score * 0.035 + difficulty * 0.2, 5.5);
 const computePipeSpacing = (score: number, difficulty: number) =>
-  Math.max(DEFAULT_CONFIG.pipe.spacing - score * 1.2 - difficulty * 12, 210);
+  Math.max(DEFAULT_CONFIG.pipe.spacing - score * 1.5 - difficulty * 15, 150);
 
 const intersects = (a: Rectangle, b: Rectangle) =>
   a.x < b.x + b.width &&
@@ -256,12 +264,12 @@ export const usePixiGame = () => {
 
     const capTexture = new Texture({
       source: pipeTexture.source,
-      frame: new Rectangle(180, 99, 284, 439),
+      frame: new Rectangle(180, 100, 181, 278),
     });
 
     const middleTexture = new Texture({
       source: pipeTexture.source,
-      frame: new Rectangle(180, 438, 304, 442),
+      frame: new Rectangle(180, 438, 181, 278),
     });
 
     return { capTexture, middleTexture };
@@ -544,6 +552,11 @@ export const usePixiGame = () => {
         autoDensity: true,
       });
       app.renderer.resize(getConstrainedWidth(), window.innerHeight);
+      app.view.style.position = "relative";
+      app.view.style.left =
+        window.innerWidth > VIEWPORT_MAX_WIDTH
+          ? `${-(VIEWPORT_MAX_WIDTH - window.innerWidth) / 2}px`
+          : "0px";
       initialized = true;
       if (cancelled) {
         if (!destroyed) {
@@ -554,6 +567,7 @@ export const usePixiGame = () => {
       }
 
       host.replaceChildren(app.canvas);
+      applyCanvasAlignment(app.canvas);
       appRef.current = app;
 
       const background = createBackground();
@@ -609,6 +623,11 @@ export const usePixiGame = () => {
       const width = getConstrainedWidth();
       const height = window.innerHeight;
       app.renderer.resize(width, height);
+      applyCanvasAlignment(app.canvas);
+      app.view.style.left =
+        window.innerWidth > VIEWPORT_MAX_WIDTH
+          ? `${-(VIEWPORT_MAX_WIDTH - window.innerWidth) / 2}px`
+          : "0px";
 
       const previousBackground = backgroundRef.current;
       if (previousBackground) {
