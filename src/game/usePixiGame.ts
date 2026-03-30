@@ -144,12 +144,12 @@ export const usePixiGame = () => {
 
     const capTexture = new Texture({
       source: pipeTexture.source,
-      frame: new Rectangle(0, 157, 284, 439),
+      frame: new Rectangle(180, 99, 284, 439),
     });
 
     const middleTexture = new Texture({
       source: pipeTexture.source,
-      frame: new Rectangle(0, 285, 304, 442),
+      frame: new Rectangle(180, 438, 304, 442),
     });
 
     return { capTexture, middleTexture };
