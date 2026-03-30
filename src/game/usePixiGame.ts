@@ -144,12 +144,12 @@ export const usePixiGame = () => {
 
     const capTexture = new Texture({
       source: pipeTexture.source,
-      frame: new Rectangle(0, 384, 1024, 128),
+      frame: new Rectangle(0, 157, 284, 439),
     });
 
     const middleTexture = new Texture({
       source: pipeTexture.source,
-      frame: new Rectangle(0, 768, 1024, 256),
+      frame: new Rectangle(0, 285, 304, 442),
     });
 
     return { capTexture, middleTexture };
@@ -196,8 +196,8 @@ export const usePixiGame = () => {
     }
 
     const pipeWidth = 80;
-    const scale = 80 / 1024;
-    const capHeight = 128 * scale; // ~10px
+    const scale = 80 / 284; // Scale based on cap width (284px)
+    const capHeight = 439 * scale; // Cap is 439px tall
 
     // Top pipe
     const topPipeHeight = centerY - gap / 2;
@@ -438,7 +438,7 @@ export const usePixiGame = () => {
 
       const cat = new Sprite(catFrames[0]);
       cat.anchor.set(0.5);
-      cat.scale.set(64 / 384); // Scale to 64px wide (171px tall)
+      cat.scale.set(192 / 384); // Scale to 192px wide (512px tall)
       cat.position.set(getConstrainedWidth() * 0.2, window.innerHeight / 2);
       catRef.current = cat;
       app.stage.addChild(cat);

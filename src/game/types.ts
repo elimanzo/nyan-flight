@@ -29,7 +29,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   flapStrength: -4.8,
   terminalVelocity: 8,
   pipe: {
-    gap: 200,
+    gap: 600,
     width: 80,
     spacing: 250,
     speed: 2.8,
