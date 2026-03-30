@@ -1,30 +1,34 @@
 export const ICEBREAKER_QUESTIONS = [
-  'If the world suddenly spoke in captions, what would yours be today?',
-  'What type of weather matches your energy right now?',
-  'Which non-playable character from any game deserves their own spin-off?',
-  'What glitch in a game or app secretly delighted you?',
-  'If you could add a power-up to your daily routine, what would it do?',
-  'What unexpected soundtrack would you pair with this game session?',
-  'Which snack fuels your best focus streaks?',
-  'If your keyboard could talk, what would it complain about?',
-  'What’s a tiny win you’re chasing this week?',
-  'How would you describe today’s mood using only game genres?',
-  'Which classic arcade cabinet would you rescue from obscurity?',
-  'What fictional shop would you visit for upgrades?',
-  'If you earned a badge for last weekend, what would it say?',
-  'What’s a local spot that feels like a hidden side quest?',
-  'Which controller layout best matches your personality?',
-  'What boss battle quote lives in your head rent-free?',
-  'If you could re-theme a classic board game with cats, which one?',
-  'What’s your favorite way to celebrate an in-game win with friends?',
-  'Which game world weather would you bring into real life for a day?',
-  'What everyday object would make a hilarious in-game item?',
-]
+  "If animals could talk, which one would be the rudest?",
+  "What would your villain name be?",
+  "If you had to fight one inanimate object, what would it be?",
+  "What’s a completely useless talent you have?",
+  "If your life were a reality show, what would it be called?",
+  "What’s the weirdest food combination you actually enjoy?",
+  "If you could replace handshakes with something else, what would it be?",
+  "What’s something that feels illegal but isn’t?",
+  "If your pet had a job, what would it be?",
+  "What would your warning label say?",
+  "If you were a ghost, how would you haunt people?",
+  "What’s the most ridiculous fear you have?",
+  "If you could rename yourself for a day, what would you pick?",
+  "What would your theme song be when you walk into a room?",
+  "If chairs had personalities, what type would yours be?",
+  "What’s the funniest lie you’ve ever told?",
+  "If you had to swap lives with a cartoon character, who would it be?",
+  "What’s something you’re weirdly competitive about?",
+  "If your life had a pause button, what would you use it for first?",
+  "What’s the most random thing you’ve Googled recently?",
+];
 
 export const getRandomQuestion = (exclude: string[] = []) => {
-  const deck = ICEBREAKER_QUESTIONS.filter((prompt) => !exclude.includes(prompt))
+  const deck = ICEBREAKER_QUESTIONS.filter(
+    (prompt) => !exclude.includes(prompt),
+  );
   if (deck.length === 0) {
-    return ICEBREAKER_QUESTIONS[Math.floor(Math.random() * ICEBREAKER_QUESTIONS.length)]
+    return ICEBREAKER_QUESTIONS[
+      Math.floor(Math.random() * ICEBREAKER_QUESTIONS.length)
+    ];
   }
-  return deck[Math.floor(Math.random() * deck.length)]
-}
+  return deck[Math.floor(Math.random() * deck.length)];
+};
