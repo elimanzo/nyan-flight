@@ -59,6 +59,11 @@ const VIEWPORT_MAX_WIDTH = 1000;
 const getConstrainedWidth = () =>
   Math.min(window.innerWidth, VIEWPORT_MAX_WIDTH);
 
+const setCanvasAlignment = (canvas: HTMLCanvasElement) => {
+  canvas.style.display = "block";
+  canvas.style.margin = "0 auto";
+};
+
 const getCatFrame = (status: GameStatus, velocity: number): number => {
   if (status === "idle") return 0;
   if (status === "over") return 3;
@@ -558,6 +563,7 @@ export const usePixiGame = () => {
       }
 
       host.replaceChildren(app.canvas);
+      setCanvasAlignment(app.canvas);
       appRef.current = app;
 
       const background = createBackground();
@@ -613,6 +619,7 @@ export const usePixiGame = () => {
       const width = getConstrainedWidth();
       const height = window.innerHeight;
       app.renderer.resize(width, height);
+      setCanvasAlignment(app.canvas);
 
       const previousBackground = backgroundRef.current;
       if (previousBackground) {
