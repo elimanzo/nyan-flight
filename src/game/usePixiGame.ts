@@ -17,6 +17,7 @@ import { getRandomQuestion } from "../data/icebreakers";
 import { usePixiInputs } from "../hooks/usePixiInputs";
 import catSpriteUrl from "../assets/sprites/cat.png";
 import pipeSpriteUrl from "../assets/pipes/pipes_cap_middle.png";
+import { useAudio } from "../context/useAudioContext";
 
 type PipePair = Container & {
   gap: number;
@@ -179,6 +180,7 @@ export const usePixiGame = () => {
     debugEnabled,
     toggleDebug,
   } = useGame();
+  const { playPipe, playDeath } = useAudio();
 
   const statusRef = useRef<GameStatus>(status);
   const answeredRef = useRef(answered);
@@ -457,6 +459,7 @@ export const usePixiGame = () => {
         intersects(catHitbox, ceilingZone) ||
         intersects(catHitbox, floorZone)
       ) {
+        playDeath?.();
         handleGameOver();
         return;
       }
@@ -487,6 +490,7 @@ export const usePixiGame = () => {
         if (!pipe.scored && pipe.x + DEFAULT_CONFIG.pipe.width < cat.x) {
           pipe.scored = true;
           scoreRef.current += 1;
+          playPipe?.();
           syncLiveScore();
         }
 
@@ -508,6 +512,7 @@ export const usePixiGame = () => {
         checkPipeCollision(catHitbox, pipe),
       );
       if (hasCollision) {
+        playDeath?.();
         handleGameOver();
       }
 
@@ -532,7 +537,14 @@ export const usePixiGame = () => {
         }
       }
     },
-    [checkPipeCollision, createPipePair, handleGameOver, syncLiveScore],
+    [
+      checkPipeCollision,
+      createPipePair,
+      handleGameOver,
+      playDeath,
+      playPipe,
+      syncLiveScore,
+    ],
   );
 
   useEffect(() => {
