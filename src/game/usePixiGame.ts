@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef } from "react";
 import {
   Application,
+  Assets,
   Container,
   Graphics,
   Rectangle,
   Sprite,
   Texture,
+  TilingSprite,
 } from "pixi.js";
 import type { Ticker } from "pixi.js";
 import { DEFAULT_CONFIG } from "./types";
@@ -22,6 +24,13 @@ type PipePair = Container & {
 const rainbowColors = ["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc"];
 
 const getConstrainedWidth = () => Math.min(window.innerWidth, 1000);
+
+const getCatFrame = (status: GameStatus, velocity: number): number => {
+  if (status === "idle") return 0;
+  if (status === "over") return 3;
+  if (velocity < -0.5) return 1;
+  return 2;
+};
 
 const computePipeGap = (score: number, difficulty: number) =>
   Math.max(DEFAULT_CONFIG.pipe.gap - score * 2 - difficulty * 8, 120);
@@ -40,6 +49,7 @@ export const usePixiGame = () => {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
   const catRef = useRef<Sprite | null>(null);
+  const catFramesRef = useRef<Texture[]>([]);
   const trailRef = useRef<Graphics | null>(null);
   const pipesRef = useRef<Container | null>(null);
   const backgroundRef = useRef<Graphics | null>(null);
@@ -98,17 +108,29 @@ export const usePixiGame = () => {
 
   usePixiInputs({ onFlap: handleFlap });
 
-  const createCatTexture = useCallback(async () => {
-    const graphic = new Graphics();
-    graphic.roundRect(0, 0, 80, 60, 20).fill({ color: 0xf472b6 });
-    graphic.roundRect(15, 10, 50, 40, 16).fill({ color: 0xffffff });
-    graphic.circle(30, 30, 4).fill({ color: 0x0f172a });
-    graphic.circle(50, 30, 4).fill({ color: 0x0f172a });
-    graphic.roundRect(32, 40, 16, 6, 3).fill({ color: 0xfb7185 });
-    graphic.star(70, 10, 5, 6).fill({ color: 0xfacc15 });
+  const loadCatSprite = useCallback(async () => {
+    const catTexture = await Assets.load("/src/assets/sprites/cat.png");
 
-    const texture = appRef.current?.renderer.generateTexture(graphic);
-    return texture || Texture.WHITE;
+    const frames = [
+      new Texture({
+        source: catTexture.source,
+        frame: new Rectangle(0, 0, 384, 1024),
+      }), // Idle
+      new Texture({
+        source: catTexture.source,
+        frame: new Rectangle(384, 0, 384, 1024),
+      }), // Jump
+      new Texture({
+        source: catTexture.source,
+        frame: new Rectangle(768, 0, 384, 1024),
+      }), // Float
+      new Texture({
+        source: catTexture.source,
+        frame: new Rectangle(1152, 0, 384, 1024),
+      }), // Dead
+    ];
+
+    return frames;
   }, []);
 
   const createBackground = useCallback(() => {
@@ -205,7 +227,12 @@ export const usePixiGame = () => {
         DEFAULT_CONFIG.terminalVelocity,
       );
       cat.y += velocityRef.current * delta;
-      cat.rotation = velocityRef.current * 0.035;
+
+      // Update cat sprite frame based on state
+      const frameIndex = getCatFrame(statusRef.current, velocityRef.current);
+      if (catFramesRef.current[frameIndex]) {
+        cat.texture = catFramesRef.current[frameIndex];
+      }
 
       if (
         cat.y - cat.height / 2 < 0 ||
@@ -310,7 +337,8 @@ export const usePixiGame = () => {
       pipesRef.current = pipes;
       app.stage.addChild(pipes);
 
-      const texture = await createCatTexture();
+      const catFrames = await loadCatSprite();
+      catFramesRef.current = catFrames;
       if (cancelled) {
         if (!destroyed) {
           app.destroy(true);
@@ -319,8 +347,9 @@ export const usePixiGame = () => {
         return;
       }
 
-      const cat = new Sprite(texture);
+      const cat = new Sprite(catFrames[0]);
       cat.anchor.set(0.5);
+      cat.scale.set(64 / 384); // Scale to 64px wide (171px tall)
       cat.position.set(getConstrainedWidth() * 0.2, window.innerHeight / 2);
       catRef.current = cat;
       app.stage.addChild(cat);
@@ -368,7 +397,7 @@ export const usePixiGame = () => {
       app.destroy(true);
       destroyed = true;
     };
-  }, [createBackground, createCatTexture, updateGame]);
+  }, [createBackground, loadCatSprite, updateGame]);
 
   return { canvasRef };
 };
