@@ -50,6 +50,10 @@ export const usePixiGame = () => {
   const appRef = useRef<Application | null>(null);
   const catRef = useRef<Sprite | null>(null);
   const catFramesRef = useRef<Texture[]>([]);
+  const pipeTexturesRef = useRef<{
+    capTexture: Texture;
+    middleTexture: Texture;
+  } | null>(null);
   const trailRef = useRef<Graphics | null>(null);
   const pipesRef = useRef<Container | null>(null);
   const backgroundRef = useRef<Graphics | null>(null);
@@ -133,6 +137,24 @@ export const usePixiGame = () => {
     return frames;
   }, []);
 
+  const loadPipeSprite = useCallback(async () => {
+    const pipeTexture = await Assets.load(
+      "/src/assets/pipes/pipes_cap_middle.png",
+    );
+
+    const capTexture = new Texture({
+      source: pipeTexture.source,
+      frame: new Rectangle(0, 384, 1024, 128),
+    });
+
+    const middleTexture = new Texture({
+      source: pipeTexture.source,
+      frame: new Rectangle(0, 768, 1024, 256),
+    });
+
+    return { capTexture, middleTexture };
+  }, []);
+
   const createBackground = useCallback(() => {
     const bg = new Graphics();
     const width = getConstrainedWidth();
@@ -150,22 +172,79 @@ export const usePixiGame = () => {
   const createPipePair = useCallback((centerY: number, gap: number) => {
     const container = new Container() as PipePair;
     container.gap = gap;
-    const width = DEFAULT_CONFIG.pipe.width;
-    const topHeight = Math.max(24, centerY - gap / 2);
-    const bottomY = Math.min(window.innerHeight - 24, centerY + gap / 2);
-    const bottomHeight = Math.max(24, window.innerHeight - bottomY);
 
-    const topPipe = new Graphics();
-    topPipe.roundRect(0, 0, width, topHeight, 18).fill({ color: 0x1e1b4b });
+    const textures = pipeTexturesRef.current;
+    if (!textures) {
+      // Fallback to Graphics if textures not loaded yet
+      const width = DEFAULT_CONFIG.pipe.width;
+      const topHeight = Math.max(24, centerY - gap / 2);
+      const bottomY = Math.min(window.innerHeight - 24, centerY + gap / 2);
+      const bottomHeight = Math.max(24, window.innerHeight - bottomY);
 
-    const bottomPipe = new Graphics();
-    bottomPipe
-      .roundRect(0, bottomY, width, bottomHeight + 40, 18)
-      .fill({ color: 0x312e81 });
+      const topPipe = new Graphics();
+      topPipe.roundRect(0, 0, width, topHeight, 18).fill({ color: 0x1e1b4b });
 
-    container.addChild(topPipe, bottomPipe);
+      const bottomPipe = new Graphics();
+      bottomPipe
+        .roundRect(0, bottomY, width, bottomHeight + 40, 18)
+        .fill({ color: 0x312e81 });
+
+      container.addChild(topPipe, bottomPipe);
+      container.x = getConstrainedWidth() + 100;
+      container.y = 0;
+      return container;
+    }
+
+    const pipeWidth = 80;
+    const scale = 80 / 1024;
+    const capHeight = 128 * scale; // ~10px
+
+    // Top pipe
+    const topPipeHeight = centerY - gap / 2;
+    const topMiddleHeight = Math.max(0, topPipeHeight - capHeight);
+
+    if (topMiddleHeight > 0) {
+      const topMiddle = new TilingSprite(
+        textures.middleTexture,
+        pipeWidth,
+        topMiddleHeight,
+      );
+      topMiddle.tileScale.set(scale);
+      topMiddle.position.set(0, 0);
+      container.addChild(topMiddle);
+    }
+
+    const topCap = new Sprite(textures.capTexture);
+    topCap.scale.set(scale);
+    topCap.position.set(0, topMiddleHeight);
+    container.addChild(topCap);
+
+    // Bottom pipe
+    const bottomY = centerY + gap / 2;
+    const bottomPipeHeight = Math.max(0, window.innerHeight - bottomY);
+    const bottomMiddleHeight = Math.max(0, bottomPipeHeight - capHeight);
+
+    const bottomCap = new Sprite(textures.capTexture);
+    bottomCap.scale.set(scale);
+    bottomCap.anchor.set(0, 1); // Anchor bottom for flip
+    bottomCap.angle = 180;
+    bottomCap.position.set(pipeWidth, bottomY); // Position at right edge due to anchor
+    container.addChild(bottomCap);
+
+    if (bottomMiddleHeight > 0) {
+      const bottomMiddle = new TilingSprite(
+        textures.middleTexture,
+        pipeWidth,
+        bottomMiddleHeight,
+      );
+      bottomMiddle.tileScale.set(scale);
+      bottomMiddle.position.set(0, bottomY);
+      container.addChild(bottomMiddle);
+    }
+
     container.x = getConstrainedWidth() + 100;
     container.y = 0;
+
     return container;
   }, []);
 
@@ -337,6 +416,16 @@ export const usePixiGame = () => {
       pipesRef.current = pipes;
       app.stage.addChild(pipes);
 
+      const pipeTextures = await loadPipeSprite();
+      pipeTexturesRef.current = pipeTextures;
+      if (cancelled) {
+        if (!destroyed) {
+          app.destroy(true);
+          destroyed = true;
+        }
+        return;
+      }
+
       const catFrames = await loadCatSprite();
       catFramesRef.current = catFrames;
       if (cancelled) {
@@ -397,7 +486,7 @@ export const usePixiGame = () => {
       app.destroy(true);
       destroyed = true;
     };
-  }, [createBackground, loadCatSprite, updateGame]);
+  }, [createBackground, loadCatSprite, loadPipeSprite, updateGame]);
 
   return { canvasRef };
 };
