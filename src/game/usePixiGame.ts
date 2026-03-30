@@ -30,6 +30,8 @@ const PIPE_BODY_SOURCE = { width: 181, height: 278 } as const;
 const CAT_SOURCE_WIDTH = 384;
 const CAT_TARGET_WIDTH = 96;
 const CAT_SCALE = CAT_TARGET_WIDTH / CAT_SOURCE_WIDTH;
+const PIPE_GAP_BASE = 360;
+const PIPE_SPACING_BASE = 140;
 
 const HITBOX_CONFIG = {
   cat: {
@@ -57,12 +59,6 @@ const VIEWPORT_MAX_WIDTH = 1000;
 const getConstrainedWidth = () =>
   Math.min(window.innerWidth, VIEWPORT_MAX_WIDTH);
 
-const applyCanvasAlignment = (canvas: HTMLCanvasElement) => {
-  const overflow = window.innerWidth - VIEWPORT_MAX_WIDTH;
-  canvas.style.position = "relative";
-  canvas.style.left = overflow > 0 ? `-${overflow / 2}px` : "0px";
-};
-
 const getCatFrame = (status: GameStatus, velocity: number): number => {
   if (status === "idle") return 0;
   if (status === "over") return 3;
@@ -71,11 +67,11 @@ const getCatFrame = (status: GameStatus, velocity: number): number => {
 };
 
 const computePipeGap = (score: number, difficulty: number) =>
-  Math.max(DEFAULT_CONFIG.pipe.gap - score * 4 - difficulty * 12, 140);
+  Math.max(PIPE_GAP_BASE - score * 6 - difficulty * 14, 130);
 const computePipeSpeed = (score: number, difficulty: number) =>
   Math.min(DEFAULT_CONFIG.pipe.speed + score * 0.035 + difficulty * 0.2, 5.5);
 const computePipeSpacing = (score: number, difficulty: number) =>
-  Math.max(DEFAULT_CONFIG.pipe.spacing - score * 1.5 - difficulty * 15, 150);
+  Math.max(PIPE_SPACING_BASE - score * 1.2 - difficulty * 9, 80);
 
 const intersects = (a: Rectangle, b: Rectangle) =>
   a.x < b.x + b.width &&
@@ -344,8 +340,8 @@ export const usePixiGame = () => {
     }
 
     const topCap = new Sprite(textures.capTexture);
-    topCap.scale.set(capScale);
-    topCap.position.set(0, Math.max(0, topPipeHeight - capHeight));
+    topCap.scale.set(capScale, -capScale);
+    topCap.position.set(0, topPipeHeight);
     topCap.name = "pipe-cap-top";
     container.addChild(topCap);
 
@@ -355,8 +351,8 @@ export const usePixiGame = () => {
     const bottomMiddleHeight = Math.max(0, bottomPipeHeight - capHeight);
 
     const bottomCap = new Sprite(textures.capTexture);
-    bottomCap.scale.set(capScale, -capScale);
-    bottomCap.position.set(0, bottomStart + bottomPipeHeight);
+    bottomCap.scale.set(capScale);
+    bottomCap.position.set(0, bottomStart);
     bottomCap.name = "pipe-cap-bottom";
     container.addChild(bottomCap);
 
@@ -367,7 +363,7 @@ export const usePixiGame = () => {
         bottomMiddleHeight,
       );
       bottomMiddle.tileScale.set(bodyScale, bodyScale);
-      bottomMiddle.position.set(0, bottomStart);
+      bottomMiddle.position.set(0, bottomStart + capHeight);
       bottomMiddle.name = "pipe-body-bottom";
       container.addChild(bottomMiddle);
     }
@@ -552,11 +548,6 @@ export const usePixiGame = () => {
         autoDensity: true,
       });
       app.renderer.resize(getConstrainedWidth(), window.innerHeight);
-      app.view.style.position = "relative";
-      app.view.style.left =
-        window.innerWidth > VIEWPORT_MAX_WIDTH
-          ? `${-(VIEWPORT_MAX_WIDTH - window.innerWidth) / 2}px`
-          : "0px";
       initialized = true;
       if (cancelled) {
         if (!destroyed) {
@@ -567,7 +558,6 @@ export const usePixiGame = () => {
       }
 
       host.replaceChildren(app.canvas);
-      applyCanvasAlignment(app.canvas);
       appRef.current = app;
 
       const background = createBackground();
@@ -623,11 +613,6 @@ export const usePixiGame = () => {
       const width = getConstrainedWidth();
       const height = window.innerHeight;
       app.renderer.resize(width, height);
-      applyCanvasAlignment(app.canvas);
-      app.view.style.left =
-        window.innerWidth > VIEWPORT_MAX_WIDTH
-          ? `${-(VIEWPORT_MAX_WIDTH - window.innerWidth) / 2}px`
-          : "0px";
 
       const previousBackground = backgroundRef.current;
       if (previousBackground) {
