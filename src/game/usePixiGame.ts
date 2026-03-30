@@ -57,6 +57,8 @@ export const usePixiGame = () => {
   const trailRef = useRef<Graphics | null>(null);
   const pipesRef = useRef<Container | null>(null);
   const backgroundRef = useRef<Graphics | null>(null);
+  const debugGraphicsRef = useRef<Graphics | null>(null);
+  const debugModeRef = useRef(false);
   const velocityRef = useRef(0);
   const scoreRef = useRef(0);
   const lastReportedScoreRef = useRef(0);
@@ -110,7 +112,12 @@ export const usePixiGame = () => {
     velocityRef.current = DEFAULT_CONFIG.flapStrength;
   }, []);
 
-  usePixiInputs({ onFlap: handleFlap });
+  const handleToggleDebug = useCallback(() => {
+    debugModeRef.current = !debugModeRef.current;
+    console.log("Debug mode:", debugModeRef.current ? "ON" : "OFF");
+  }, []);
+
+  usePixiInputs({ onFlap: handleFlap, onToggleDebug: handleToggleDebug });
 
   const loadCatSprite = useCallback(async () => {
     const catTexture = await Assets.load("/src/assets/sprites/cat.png");
@@ -370,6 +377,37 @@ export const usePixiGame = () => {
       if (hasCollision) {
         handleGameOver();
       }
+
+      // Debug mode: draw hitboxes
+      const debugGraphics = debugGraphicsRef.current;
+      if (debugGraphics) {
+        debugGraphics.clear();
+        if (debugModeRef.current) {
+          // Draw cat hitbox in red
+          const catBounds = cat.getBounds();
+          debugGraphics.lineStyle(2, 0xff0000, 1);
+          debugGraphics.drawRect(
+            catBounds.x,
+            catBounds.y,
+            catBounds.width,
+            catBounds.height,
+          );
+
+          // Draw pipe hitboxes in yellow
+          debugGraphics.lineStyle(2, 0xffff00, 1);
+          pipePairs.forEach((pipe) => {
+            pipe.children.forEach((child) => {
+              const childBounds = child.getBounds();
+              debugGraphics.drawRect(
+                childBounds.x,
+                childBounds.y,
+                childBounds.width,
+                childBounds.height,
+              );
+            });
+          });
+        }
+      }
     },
     [checkPipeCollision, createPipePair, handleGameOver, syncLiveScore],
   );
@@ -443,6 +481,10 @@ export const usePixiGame = () => {
       catRef.current = cat;
       app.stage.addChild(cat);
 
+      const debugGraphics = new Graphics();
+      debugGraphicsRef.current = debugGraphics;
+      app.stage.addChild(debugGraphics);
+
       app.ticker.add(updateGame);
     };
 
@@ -482,6 +524,7 @@ export const usePixiGame = () => {
       trailRef.current = null;
       pipesRef.current = null;
       backgroundRef.current = null;
+      debugGraphicsRef.current = null;
       appRef.current = null;
       app.destroy(true);
       destroyed = true;
