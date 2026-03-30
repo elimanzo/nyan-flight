@@ -15,6 +15,8 @@ import { useGame } from "../context/useGameContext";
 import type { GameStatus } from "../context/types";
 import { getRandomQuestion } from "../data/icebreakers";
 import { usePixiInputs } from "../hooks/usePixiInputs";
+import catSpriteUrl from "../assets/sprites/cat.png";
+import pipeSpriteUrl from "../assets/pipes/pipes_cap_middle.png";
 
 type PipePair = Container & {
   gap: number;
@@ -234,7 +236,7 @@ export const usePixiGame = () => {
   usePixiInputs({ onFlap: handleFlap, onToggleDebug: handleToggleDebug });
 
   const loadCatSprite = useCallback(async () => {
-    const catTexture = await Assets.load("/src/assets/sprites/cat.png");
+    const catTexture = await Assets.load(catSpriteUrl);
 
     const frames = [
       new Texture({
@@ -259,9 +261,7 @@ export const usePixiGame = () => {
   }, []);
 
   const loadPipeSprite = useCallback(async () => {
-    const pipeTexture = await Assets.load(
-      "/src/assets/pipes/pipes_cap_middle.png",
-    );
+    const pipeTexture = await Assets.load(pipeSpriteUrl);
 
     const capTexture = new Texture({
       source: pipeTexture.source,
