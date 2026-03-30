@@ -1,13 +1,14 @@
 # Nyan Flight
 
-Zero-cost Flappy Bird–style experience built with React, TypeScript, PixiJS, and Tailwind. Guide a nyan-inspired cat through procedural pipes, keep the soundtrack playing via Howler, and surface playful challenge cards every time you crash.
+A vibe-coded connection game that riffs on Flappy Bird energy and wraps it in neon cat chaos. Fly a cosmic nyan pilot through synth-drenched tunnels, sync every flap to Howler-powered beats, and unlock quirky challenge cards the moment you bump a pipe. Built for instant icebreakers, zero awkward silences, and maximum co-op energy.
 
 ## Features
-- PixiJS canvas gameplay with adaptive difficulty, rainbow trails, and pause/resume handling
-- React HUD with score/best tracking, settings modal, accessibility notice, and challenge overlays
-- Icebreaker question deck that avoids repeats until the full list is used
-- Howler-based audio manager with autoplay safeguards and persistent volume settings
-- Strict TypeScript config, ESLint + Prettier ready, Vitest/RTL scaffolding for tests
+
+- PixiJS flight loop with adaptive difficulty, rainbow exhaust trails, and buttery pause/resume
+- React HUD that keeps scores, surfaces settings/accessibility controls, and never blocks the fun overlays
+- Curated icebreaker deck that avoids repeats so conversations stay fresh
+- Shared audio experience via Howler with autoplay guards, global volume, and SFX sweeteners
+- TypeScript-first setup with ESLint, Prettier, Vitest/RTL scaffolding, and Vite hot reloads
 
 ## Getting Started
 
@@ -16,6 +17,7 @@ npm install
 ```
 
 ### Scripts
+
 - `npm run dev` – start Vite dev server
 - `npm run build` – type-check + bundle for production
 - `npm run preview` – preview the production build
@@ -24,6 +26,7 @@ npm install
 - `npm run test:watch` – run Vitest in watch mode
 
 ## Development Notes
-- Audio starts after the first user interaction to satisfy browser autoplay rules
-- Add actual Nyan Cat sprite/sound assets under `public/` for production use
-- Deploy easily to Vercel: `vercel --prod` after running `npm run build`
+
+- Audio stays muted until the first tap/click to satisfy browser autoplay rules
+- Swap in licensed sprites/sfx under `public/` before shipping to production
+- Deploy anywhere Vite runs—Vercel works great: `vercel --prod` after `npm run build`
