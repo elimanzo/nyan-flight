@@ -26,5 +26,8 @@ dist-ssr
 # Environment variables
 .env
 
+# Local OpenCode plans
+.opencode/plans/
+
 # Accidentally generated files
 nul
