@@ -4,10 +4,9 @@ import { useGame } from "../context/useGameContext";
 
 type Props = {
   open: boolean;
-  onChallengeCard: () => void;
 };
 
-export const GameOverOverlay = ({ open, onChallengeCard }: Props) => {
+export const GameOverOverlay = ({ open }: Props) => {
   const { score, bestScore, restart } = useGame();
   const medal = getMedal(score);
   const isNewBest = score > 0 && score > bestScore;
@@ -70,18 +69,12 @@ export const GameOverOverlay = ({ open, onChallengeCard }: Props) => {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8">
               <button
-                className="flex-1 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#120627] transition hover:bg-white/90"
+                className="w-full rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#120627] transition hover:bg-white/90"
                 onClick={restart}
               >
-                Retry run
-              </button>
-              <button
-                className="flex-1 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10"
-                onClick={onChallengeCard}
-              >
-                Challenge card
+                Retry
               </button>
             </div>
           </motion.div>

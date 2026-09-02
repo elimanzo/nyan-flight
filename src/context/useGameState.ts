@@ -10,8 +10,6 @@ export const useGameState = (): GameContextValue => {
     const stored = window.localStorage.getItem("nyan-best-score");
     return stored ? Number.parseInt(stored, 10) || 0 : 0;
   });
-  const [answered, setAnswered] = useState<string[]>([]);
-  const [lastQuestion, setLastQuestion] = useState<string | undefined>();
   const [debugEnabled, setDebugEnabled] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = window.localStorage.getItem("nyan-debug-enabled");
@@ -31,7 +29,7 @@ export const useGameState = (): GameContextValue => {
     setStatus((prev) => (prev === "paused" ? "running" : prev));
   }, []);
 
-  const end = useCallback((finalScore: number, question: string) => {
+  const end = useCallback((finalScore: number) => {
     setScore(finalScore);
     setBestScore((prev) => {
       const next = Math.max(prev, finalScore);
@@ -40,8 +38,6 @@ export const useGameState = (): GameContextValue => {
       }
       return next;
     });
-    setLastQuestion(question);
-    setAnswered((prev) => [...prev, question]);
     setStatus("over");
   }, []);
 
@@ -69,8 +65,6 @@ export const useGameState = (): GameContextValue => {
       status,
       score,
       bestScore,
-      lastQuestion,
-      answered,
       start,
       pause,
       resume,
@@ -84,8 +78,6 @@ export const useGameState = (): GameContextValue => {
       status,
       score,
       bestScore,
-      lastQuestion,
-      answered,
       start,
       pause,
       resume,

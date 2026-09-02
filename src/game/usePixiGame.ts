@@ -13,7 +13,6 @@ import type { Ticker } from "pixi.js";
 import { DEFAULT_CONFIG } from "./types";
 import { useGame } from "../context/useGameContext";
 import type { GameStatus } from "../context/types";
-import { getRandomQuestion } from "../data/icebreakers";
 import { usePixiInputs } from "../hooks/usePixiInputs";
 import catSpriteUrl from "../assets/sprites/cat.png";
 import pipeSpriteUrl from "../assets/pipes/pipes_cap_middle.png";
@@ -173,7 +172,6 @@ export const usePixiGame = () => {
 
   const {
     status,
-    answered,
     end,
     setLiveScore,
     start,
@@ -183,7 +181,6 @@ export const usePixiGame = () => {
   const { playPipe, playDeath } = useAudio();
 
   const statusRef = useRef<GameStatus>(status);
-  const answeredRef = useRef(answered);
   const endRef = useRef(end);
   const setLiveScoreRef = useRef(setLiveScore);
   const startRef = useRef(start);
@@ -191,10 +188,6 @@ export const usePixiGame = () => {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
-
-  useEffect(() => {
-    answeredRef.current = answered;
-  }, [answered]);
 
   useEffect(() => {
     endRef.current = end;
@@ -409,8 +402,7 @@ export const usePixiGame = () => {
   }, [syncLiveScore]);
 
   const handleGameOver = useCallback(() => {
-    const question = getRandomQuestion(answeredRef.current);
-    endRef.current?.(scoreRef.current, question);
+    endRef.current?.(scoreRef.current);
     resetGame();
   }, [resetGame]);
 

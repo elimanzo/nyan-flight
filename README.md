@@ -1,12 +1,12 @@
 # Nyan Flight
 
-A vibe-coded connection game that riffs on Flappy Bird energy and wraps it in neon cat chaos. Fly a cosmic nyan pilot through synth-drenched tunnels, sync every flap to Howler-powered beats, and unlock quirky challenge cards the moment you bump a pipe. Built for instant icebreakers, zero awkward silences, and maximum co-op energy.
+A neon arcade game that riffs on Flappy Bird energy and wraps it in cosmic cat chaos. Fly a nyan pilot through synth-drenched tunnels, chase your Best, and compete for a spot on a global Leaderboard.
 
 ## Features
 
 - PixiJS flight loop with adaptive difficulty, rainbow exhaust trails, and buttery pause/resume
 - React HUD that keeps scores, surfaces settings/accessibility controls, and never blocks the fun overlays
-- Curated icebreaker deck that avoids repeats so conversations stay fresh
+- Medal tiers (bronze → platinum) awarded at Score milestones for extra flair
 - Shared audio experience via Howler with autoplay guards, global volume, and SFX sweeteners
 - TypeScript-first setup with ESLint, Prettier, Vitest/RTL scaffolding, and Vite hot reloads
 
