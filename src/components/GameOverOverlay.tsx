@@ -209,7 +209,7 @@ export const GameOverOverlay = ({ open }: Props) => {
 
             {/* Leaderboard section */}
             <div className="mt-6">
-              {loadState.tag === 'loading' && <LeaderboardSkeleton />}
+              {(loadState.tag === 'loading' || isSubmitting) && <LeaderboardSkeleton />}
 
               {loadState.tag === 'offline' && (
                 <p className="text-xs text-white/40">
@@ -224,7 +224,7 @@ export const GameOverOverlay = ({ open }: Props) => {
                 />
               )}
 
-              {boardToShow && submitState.tag !== 'submitting' && (
+              {boardToShow && !isSubmitting && (
                 <LeaderboardTable
                   board={boardToShow}
                   highlight={
