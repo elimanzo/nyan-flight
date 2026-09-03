@@ -12,6 +12,7 @@ const SFX_RELATIVE_VOLUME = {
   jump: 1.2,
   pipe: 1,
   death: 1.5,
+  nearMiss: 0.9,
 } as const;
 const getNow = () =>
   typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -20,6 +21,7 @@ let musicInstance: Howl | null = null;
 let jumpInstance: Howl | null = null;
 let pipeInstance: Howl | null = null;
 let deathInstance: Howl | null = null;
+let nearMissInstance: Howl | null = null;
 
 const ensureMusic = () => {
   if (musicInstance) return musicInstance;
@@ -57,6 +59,16 @@ const ensureDeath = () => {
     volume: 0,
   });
   return deathInstance;
+};
+
+const ensureNearMiss = () => {
+  if (nearMissInstance) return nearMissInstance;
+  nearMissInstance = new Howl({
+    src: [pipeSound],
+    volume: 0,
+    rate: 0.45,
+  });
+  return nearMissInstance;
 };
 
 type SfxOptions = {
@@ -153,6 +165,7 @@ export const useAudioManager = () => {
     ensureJump().volume(volume * SFX_RELATIVE_VOLUME.jump);
     ensurePipe().volume(Math.min(1, volume * SFX_RELATIVE_VOLUME.pipe));
     ensureDeath().volume(Math.min(1, volume * SFX_RELATIVE_VOLUME.death));
+    ensureNearMiss().volume(Math.min(1, volume * SFX_RELATIVE_VOLUME.nearMiss));
     if (typeof window !== "undefined") {
       window.localStorage.setItem(MUSIC_KEY, volume.toString());
     }
@@ -177,6 +190,11 @@ export const useAudioManager = () => {
     [],
   );
 
+  const playNearMiss = useMemo(
+    () => createSfxPlayer(ensureNearMiss, { cooldownMs: 400, interrupt: false, rateRange: [0.4, 0.55] }),
+    [],
+  );
+
   const api = useMemo(
     () => ({
       volume,
@@ -186,8 +204,9 @@ export const useAudioManager = () => {
       playJump,
       playPipe,
       playDeath,
+      playNearMiss,
     }),
-    [isReady, playDeath, playJump, playPipe, volume],
+    [isReady, playDeath, playJump, playNearMiss, playPipe, volume],
   );
 
   return api;

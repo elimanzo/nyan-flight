@@ -6,6 +6,7 @@ import {
   Graphics,
   Rectangle,
   Sprite,
+  Text,
   Texture,
   TilingSprite,
 } from "pixi.js";
@@ -20,7 +21,24 @@ import { useAudio } from "../context/useAudioContext";
 
 type PipePair = Container & {
   gap: number;
+  centerY: number;
   scored?: boolean;
+};
+
+type Particle = {
+  x: number; y: number;
+  vx: number; vy: number;
+  alpha: number;
+  color: number;
+  size: number;
+  life: number;
+};
+
+type ScoreFlash = {
+  text: Text;
+  vy: number;
+  life: number;
+  totalLife: number;
 };
 
 type PipeChild = Sprite | TilingSprite | Graphics;
@@ -34,10 +52,23 @@ const CAT_TARGET_WIDTH = 96;
 const CAT_SCALE = CAT_TARGET_WIDTH / CAT_SOURCE_WIDTH;
 const PIPE_GAP_BASE = 360;
 const PIPE_SPACING_BASE = 140;
+const NEAR_MISS_THRESHOLD = 52;
+const SHAKE_DURATION = 22;
+const SHAKE_MAX = 10;
+const PARTICLE_GRAVITY = 0.18;
+const PARTICLE_BASE_LIFE = 40;
+const PARTICLE_LIFE_JITTER = 20;
+const PARTICLE_SPEED_MIN = 2;
+const PARTICLE_SPEED_JITTER = 4.5;
+const PARTICLE_SIZE_MIN = 3;
+const PARTICLE_SIZE_JITTER = 5;
+const SCORE_FLASH_LIFE = 40;
+const SCORE_FLASH_VY = -1.8;
+const SCORE_FLASH_STYLE = { fill: '#ffffff', fontSize: 22, fontWeight: 'bold', dropShadow: true, dropShadowDistance: 2 } as const;
 
 const HITBOX_CONFIG = {
   cat: {
-    widthScale: 0.6,
+    widthScale: 0.4,
     heightScale: 0.15,
     offsetYScale: 0.02,
   },
@@ -169,6 +200,10 @@ export const usePixiGame = () => {
   const lastReportedScoreRef = useRef(0);
   const elapsedRef = useRef(0);
   const difficultyRef = useRef(0);
+  const shakeRef = useRef(0);
+  const particlesRef = useRef<Particle[]>([]);
+  const particleGraphicsRef = useRef<Graphics | null>(null);
+  const scoreFlashesRef = useRef<ScoreFlash[]>([]);
 
   const {
     status,
@@ -178,7 +213,8 @@ export const usePixiGame = () => {
     debugEnabled,
     toggleDebug,
   } = useGame();
-  const { playPipe, playDeath } = useAudio();
+  const { playPipe, playDeath, playNearMiss } = useAudio();
+  const playNearMissRef = useRef(playNearMiss);
 
   const statusRef = useRef<GameStatus>(status);
   const endRef = useRef(end);
@@ -204,6 +240,10 @@ export const usePixiGame = () => {
   useEffect(() => {
     debugModeRef.current = debugEnabled;
   }, [debugEnabled]);
+
+  useEffect(() => {
+    playNearMissRef.current = playNearMiss;
+  }, [playNearMiss]);
 
   const syncLiveScore = useCallback(() => {
     if (statusRef.current !== "running") return;
@@ -288,6 +328,7 @@ export const usePixiGame = () => {
   const createPipePair = useCallback((centerY: number, gap: number) => {
     const container = new Container() as PipePair;
     container.gap = gap;
+    container.centerY = centerY;
 
     const textures = pipeTexturesRef.current;
     const rendererHeight =
@@ -388,6 +429,17 @@ export const usePixiGame = () => {
     lastReportedScoreRef.current = 0;
     elapsedRef.current = 0;
     difficultyRef.current = 0;
+    shakeRef.current = 0;
+    const app = appRef.current;
+    if (app) {
+      app.stage.x = 0;
+      app.stage.y = 0;
+      for (const f of scoreFlashesRef.current) {
+        app.stage.removeChild(f.text);
+        f.text.destroy();
+      }
+    }
+    scoreFlashesRef.current = [];
     if (catRef.current) {
       catRef.current.position.set(
         getConstrainedWidth() * 0.2,
@@ -400,6 +452,24 @@ export const usePixiGame = () => {
     }
     syncLiveScore();
   }, [syncLiveScore]);
+
+  const spawnDeathParticles = useCallback((x: number, y: number) => {
+    const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
+    for (let i = 0; i < 20; i++) {
+      const angle = (i / 20) * Math.PI * 2;
+      const speed = PARTICLE_SPEED_MIN + Math.random() * PARTICLE_SPEED_JITTER;
+      particlesRef.current.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        alpha: 1,
+        color: colors[i % colors.length],
+        size: PARTICLE_SIZE_MIN + Math.random() * PARTICLE_SIZE_JITTER,
+        life: PARTICLE_BASE_LIFE + Math.random() * PARTICLE_LIFE_JITTER,
+      });
+    }
+  }, []);
 
   const handleGameOver = useCallback(() => {
     endRef.current?.(scoreRef.current);
@@ -415,6 +485,49 @@ export const usePixiGame = () => {
       const trail = trailRef.current;
       const background = backgroundRef.current;
       if (!cat || !pipes || !app || !trail) return;
+
+      // --- Juice: always update, even when not running ---
+      if (shakeRef.current > 0) {
+        shakeRef.current -= delta;
+        const t = Math.max(0, shakeRef.current / SHAKE_DURATION);
+        const intensity = t * SHAKE_MAX;
+        app.stage.x = (Math.random() * 2 - 1) * intensity;
+        app.stage.y = (Math.random() * 2 - 1) * intensity;
+      } else if (app.stage.x !== 0 || app.stage.y !== 0) {
+        app.stage.x = 0;
+        app.stage.y = 0;
+      }
+
+      const pg = particleGraphicsRef.current;
+      if (pg) {
+        pg.clear();
+        for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+          const p = particlesRef.current[i];
+          p.x += p.vx * delta;
+          p.y += p.vy * delta;
+          p.vy += PARTICLE_GRAVITY * delta;
+          p.life -= delta;
+          p.alpha = Math.max(0, p.life / (PARTICLE_BASE_LIFE + PARTICLE_LIFE_JITTER / 2));
+          pg.beginFill(p.color, p.alpha);
+          pg.drawCircle(p.x, p.y, p.size);
+          pg.endFill();
+          if (p.life <= 0) particlesRef.current.splice(i, 1);
+        }
+      }
+
+      for (let i = scoreFlashesRef.current.length - 1; i >= 0; i--) {
+        const f = scoreFlashesRef.current[i];
+        f.text.y += f.vy * delta;
+        f.life -= delta;
+        f.text.alpha = Math.max(0, f.life / f.totalLife);
+        if (f.life <= 0) {
+          app.stage.removeChild(f.text);
+          f.text.destroy();
+          scoreFlashesRef.current.splice(i, 1);
+        }
+      }
+      // --- End juice ---
+
       if (statusRef.current !== "running") return;
 
       elapsedRef.current += ticker.deltaMS;
@@ -452,6 +565,8 @@ export const usePixiGame = () => {
         intersects(catHitbox, floorZone)
       ) {
         playDeath?.();
+        spawnDeathParticles(cat.x, cat.y);
+        shakeRef.current = SHAKE_DURATION;
         handleGameOver();
         return;
       }
@@ -484,6 +599,21 @@ export const usePixiGame = () => {
           scoreRef.current += 1;
           playPipe?.();
           syncLiveScore();
+
+          // Near-miss detection
+          const topEdge = pipe.centerY - pipe.gap / 2;
+          const bottomEdge = pipe.centerY + pipe.gap / 2;
+          const minDist = Math.min(cat.y - topEdge, bottomEdge - cat.y);
+          if (minDist > 0 && minDist < NEAR_MISS_THRESHOLD) {
+            playNearMissRef.current?.();
+          }
+
+          // Score flash
+          const flash = new Text({ text: '+1', style: SCORE_FLASH_STYLE });
+          flash.anchor.set(0.5);
+          flash.position.set(cat.x + 30, cat.y - 20);
+          app.stage.addChild(flash);
+          scoreFlashesRef.current.push({ text: flash, vy: SCORE_FLASH_VY, life: SCORE_FLASH_LIFE, totalLife: SCORE_FLASH_LIFE });
         }
 
         if (pipe.x < -DEFAULT_CONFIG.pipe.width * 2) {
@@ -505,6 +635,8 @@ export const usePixiGame = () => {
       );
       if (hasCollision) {
         playDeath?.();
+        spawnDeathParticles(cat.x, cat.y);
+        shakeRef.current = SHAKE_DURATION;
         handleGameOver();
       }
 
@@ -535,6 +667,7 @@ export const usePixiGame = () => {
       handleGameOver,
       playDeath,
       playPipe,
+      spawnDeathParticles,
       syncLiveScore,
     ],
   );
@@ -613,6 +746,10 @@ export const usePixiGame = () => {
       debugGraphicsRef.current = debugGraphics;
       app.stage.addChild(debugGraphics);
 
+      const particleGraphics = new Graphics();
+      particleGraphicsRef.current = particleGraphics;
+      app.stage.addChild(particleGraphics);
+
       app.ticker.add(updateGame);
     };
 
@@ -654,6 +791,7 @@ export const usePixiGame = () => {
       pipesRef.current = null;
       backgroundRef.current = null;
       debugGraphicsRef.current = null;
+      particleGraphicsRef.current = null;
       appRef.current = null;
       app.destroy(true);
       destroyed = true;
