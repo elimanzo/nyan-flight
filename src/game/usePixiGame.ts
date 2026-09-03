@@ -12,6 +12,18 @@ import {
 } from "pixi.js";
 import type { Ticker } from "pixi.js";
 import { DEFAULT_CONFIG } from "./types";
+import {
+  type Rect,
+  HITBOX_CONFIG,
+  NEAR_MISS_THRESHOLD,
+  computePipeGap,
+  computePipeSpeed,
+  computePipeSpacing,
+  createInsetRectangle,
+  getCeilingZone,
+  getFloorZone,
+  intersects,
+} from "./runGeometry";
 import { useGame } from "../context/useGameContext";
 import type { GameStatus } from "../context/types";
 import { usePixiInputs } from "../hooks/usePixiInputs";
@@ -50,9 +62,6 @@ const PIPE_BODY_SOURCE = { width: 181, height: 278 } as const;
 const CAT_SOURCE_WIDTH = 384;
 const CAT_TARGET_WIDTH = 96;
 const CAT_SCALE = CAT_TARGET_WIDTH / CAT_SOURCE_WIDTH;
-const PIPE_GAP_BASE = 360;
-const PIPE_SPACING_BASE = 140;
-const NEAR_MISS_THRESHOLD = 52;
 const SHAKE_DURATION = 22;
 const SHAKE_MAX = 10;
 const PARTICLE_GRAVITY = 0.18;
@@ -66,22 +75,6 @@ const SCORE_FLASH_LIFE = 40;
 const CAT_FADE_DURATION = 25;
 const SCORE_FLASH_VY = -1.8;
 const SCORE_FLASH_STYLE = { fill: '#ffffff', fontSize: 22, fontWeight: 'bold', dropShadow: true, dropShadowDistance: 2 } as const;
-
-const HITBOX_CONFIG = {
-  cat: {
-    widthScale: 0.4,
-    heightScale: 0.15,
-    offsetYScale: 0.02,
-  },
-  pipe: {
-    cap: { insetXRatio: 0.18, insetYRatio: 0.15 },
-    body: { insetXRatio: 0.25, insetYRatio: 0.08 },
-  },
-  bounds: {
-    ceiling: 12,
-    floor: 48,
-  },
-} as const;
 
 const DEBUG_COLORS = {
   cat: 0x10b981,
@@ -105,48 +98,21 @@ const getCatFrame = (status: GameStatus, velocity: number): number => {
   return 2;
 };
 
-const computePipeGap = (score: number, difficulty: number) =>
-  Math.max(PIPE_GAP_BASE - score * 6 - difficulty * 14, 175);
-const computePipeSpeed = (score: number, difficulty: number) =>
-  Math.min(DEFAULT_CONFIG.pipe.speed + score * 0.035 + difficulty * 0.2, 5.5);
-const computePipeSpacing = (score: number, difficulty: number) =>
-  Math.max(PIPE_SPACING_BASE - score * 1.2 - difficulty * 9, 80);
-
-const intersects = (a: Rectangle, b: Rectangle) =>
-  a.x < b.x + b.width &&
-  a.x + a.width > b.x &&
-  a.y < b.y + b.height &&
-  a.y + a.height > b.y;
-
-const createInsetRectangle = (
-  bounds: Rectangle,
-  insetXRatio = 0,
-  insetYRatio = 0,
-) => {
-  const insetX = bounds.width * insetXRatio;
-  const insetY = bounds.height * insetYRatio;
-  return new Rectangle(
-    bounds.x + insetX / 2,
-    bounds.y + insetY / 2,
-    Math.max(0, bounds.width - insetX),
-    Math.max(0, bounds.height - insetY),
-  );
-};
-
-const getCatHitbox = (cat: Sprite) => {
+const getCatHitbox = (cat: Sprite): Rect => {
   const width = cat.width * HITBOX_CONFIG.cat.widthScale;
   const height = cat.height * HITBOX_CONFIG.cat.heightScale;
   const offsetY = cat.height * HITBOX_CONFIG.cat.offsetYScale;
-  return new Rectangle(
-    cat.x - width / 2,
-    cat.y - height / 2 + offsetY,
+  return {
+    x: cat.x - width / 2,
+    y: cat.y - height / 2 + offsetY,
     width,
     height,
-  );
+  };
 };
 
-const getPipeHitbox = (child: PipeChild) => {
-  const bounds = new Rectangle().copyFromBounds(child.getBounds());
+const getPipeHitbox = (child: PipeChild): Rect => {
+  const b = child.getBounds();
+  const bounds: Rect = { x: b.x, y: b.y, width: b.width, height: b.height };
   const config = child.name?.includes("cap")
     ? HITBOX_CONFIG.pipe.cap
     : HITBOX_CONFIG.pipe.body;
@@ -157,20 +123,9 @@ const getPipeHitbox = (child: PipeChild) => {
   );
 };
 
-const getFloorZone = (width: number, height: number) =>
-  new Rectangle(
-    0,
-    Math.max(0, height - HITBOX_CONFIG.bounds.floor),
-    width,
-    HITBOX_CONFIG.bounds.floor,
-  );
-
-const getCeilingZone = (width: number) =>
-  new Rectangle(0, 0, width, HITBOX_CONFIG.bounds.ceiling);
-
 const drawHitbox = (
   graphics: Graphics,
-  rect: Rectangle,
+  rect: Rect,
   color: number,
   alpha = 0.12,
 ) => {
@@ -194,8 +149,8 @@ export const usePixiGame = () => {
   const backgroundRef = useRef<Graphics | null>(null);
   const debugGraphicsRef = useRef<Graphics | null>(null);
   const debugModeRef = useRef(false);
-  const floorRectRef = useRef<Rectangle | null>(null);
-  const ceilingRectRef = useRef<Rectangle | null>(null);
+  const floorRectRef = useRef<Rect | null>(null);
+  const ceilingRectRef = useRef<Rect | null>(null);
   const velocityRef = useRef(0);
   const scoreRef = useRef(0);
   const lastReportedScoreRef = useRef(0);
@@ -419,7 +374,7 @@ export const usePixiGame = () => {
   }, []);
 
   const checkPipeCollision = useCallback(
-    (catHitbox: Rectangle, pipe: PipePair) =>
+    (catHitbox: Rect, pipe: PipePair) =>
       pipe.children.some((child) =>
         intersects(catHitbox, getPipeHitbox(child as PipeChild)),
       ),
