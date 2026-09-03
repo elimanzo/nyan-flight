@@ -63,6 +63,7 @@ const PARTICLE_SPEED_JITTER = 4.5;
 const PARTICLE_SIZE_MIN = 3;
 const PARTICLE_SIZE_JITTER = 5;
 const SCORE_FLASH_LIFE = 40;
+const CAT_FADE_DURATION = 25;
 const SCORE_FLASH_VY = -1.8;
 const SCORE_FLASH_STYLE = { fill: '#ffffff', fontSize: 22, fontWeight: 'bold', dropShadow: true, dropShadowDistance: 2 } as const;
 
@@ -204,6 +205,7 @@ export const usePixiGame = () => {
   const particlesRef = useRef<Particle[]>([]);
   const particleGraphicsRef = useRef<Graphics | null>(null);
   const scoreFlashesRef = useRef<ScoreFlash[]>([]);
+  const catFadeRef = useRef(0);
 
   const {
     status,
@@ -441,7 +443,9 @@ export const usePixiGame = () => {
       }
     }
     scoreFlashesRef.current = [];
+    catFadeRef.current = 0;
     if (catRef.current) {
+      catRef.current.alpha = 1;
       catRef.current.position.set(
         getConstrainedWidth() * 0.2,
         window.innerHeight / 2,
@@ -473,6 +477,7 @@ export const usePixiGame = () => {
   }, []);
 
   const handleGameOver = useCallback(() => {
+    catFadeRef.current = CAT_FADE_DURATION;
     endRef.current?.(scoreRef.current);
   }, []);
 
@@ -525,6 +530,10 @@ export const usePixiGame = () => {
           f.text.destroy();
           scoreFlashesRef.current.splice(i, 1);
         }
+      }
+      if (catFadeRef.current > 0 && cat) {
+        catFadeRef.current = Math.max(0, catFadeRef.current - delta);
+        cat.alpha = catFadeRef.current / CAT_FADE_DURATION;
       }
       // --- End juice ---
 
