@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getMedal, MEDAL_DEFS } from '../utils/medals'
 import { useGame } from '../context/useGameContext'
 import { useLeaderboardService } from '../leaderboard/useLeaderboardService'
-import { LeaderboardTable } from './LeaderboardTable'
+import { LeaderboardTable, LeaderboardSkeleton } from './LeaderboardTable'
 import type { BoardEntry } from '../leaderboard/types'
 
 type Props = { open: boolean }
@@ -209,9 +209,7 @@ export const GameOverOverlay = ({ open }: Props) => {
 
             {/* Leaderboard section */}
             <div className="mt-6">
-              {loadState.tag === 'loading' && (
-                <p className="text-xs text-white/40">Loading board…</p>
-              )}
+              {loadState.tag === 'loading' && <LeaderboardSkeleton />}
 
               {loadState.tag === 'offline' && (
                 <p className="text-xs text-white/40">

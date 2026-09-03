@@ -1,5 +1,34 @@
 import type { BoardEntry } from '../leaderboard/types'
 
+export function LeaderboardSkeleton({ rows = 10 }: { rows?: number }) {
+  return (
+    <table className="mt-4 w-full text-sm" aria-label="Loading leaderboard">
+      <thead>
+        <tr className="text-xs uppercase tracking-wider text-white/40">
+          <th className="pb-1 text-left">#</th>
+          <th className="pb-1 text-left">Initials</th>
+          <th className="pb-1 text-right">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: rows }, (_, i) => (
+          <tr key={i}>
+            <td className="py-0.5 pr-3">
+              <div className="h-3 w-3 animate-pulse rounded bg-white/10" />
+            </td>
+            <td className="py-0.5">
+              <div className="h-3 w-8 animate-pulse rounded bg-white/10" style={{ animationDelay: `${i * 40}ms` }} />
+            </td>
+            <td className="py-0.5 flex justify-end">
+              <div className="h-3 w-6 animate-pulse rounded bg-white/10" style={{ animationDelay: `${i * 40 + 20}ms` }} />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 type Props = {
   board: BoardEntry[]
   highlight?: { initials: string; score: number }
