@@ -1,6 +1,6 @@
 import type { BoardEntry } from '../leaderboard/types'
 
-const tableClass = "mt-4 w-full table-fixed text-sm"
+const tableClass = "mt-4 w-full table-fixed text-left text-sm"
 const colNum = "w-10"
 const colInitials = "w-24"
 
