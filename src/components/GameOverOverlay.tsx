@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getMedal, MEDAL_DEFS } from '../utils/medals'
 import { useGame } from '../context/useGameContext'
 import { useLeaderboardService } from '../leaderboard/useLeaderboardService'
+import { LeaderboardTable } from './LeaderboardTable'
 import type { BoardEntry } from '../leaderboard/types'
 
 type Props = { open: boolean }
@@ -93,52 +94,6 @@ function InitialsInput({ onSubmit, disabled }: InitialsInputProps) {
 }
 
 // ---------------------------------------------------------------------------
-// LeaderboardTable
-// ---------------------------------------------------------------------------
-
-type LeaderboardTableProps = {
-  board: BoardEntry[]
-  highlight?: { initials: string; score: number }
-}
-
-function LeaderboardTable({ board, highlight }: LeaderboardTableProps) {
-  return (
-    <table className="mt-4 w-full text-sm" aria-label="Leaderboard">
-      <thead>
-        <tr className="text-xs uppercase tracking-wider text-white/40">
-          <th className="pb-1 text-left">#</th>
-          <th className="pb-1 text-left">Name</th>
-          <th className="pb-1 text-right">Score</th>
-        </tr>
-      </thead>
-      <tbody>
-        {board.map((entry, idx) => {
-          const isHighlighted =
-            highlight !== undefined &&
-            entry.initials === highlight.initials &&
-            entry.score === highlight.score
-          return (
-            <tr
-              key={`${entry.initials}-${entry.score}-${idx}`}
-              data-testid={isHighlighted ? 'board-entry-highlighted' : undefined}
-              className={
-                isHighlighted
-                  ? 'rounded font-semibold text-yellow-300'
-                  : 'text-white/70'
-              }
-            >
-              <td className="py-0.5 pr-3 text-white/40">{idx + 1}</td>
-              <td className="py-0.5">{entry.initials}</td>
-              <td className="py-0.5 text-right">{entry.score}</td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // GameOverOverlay
 // ---------------------------------------------------------------------------
 
@@ -185,6 +140,7 @@ export const GameOverOverlay = ({ open }: Props) => {
     setSubmitState({ tag: 'done', initials, score, board })
   }
 
+  const isSubmitting = submitState.tag === 'submitting'
   const offlineQualifies = loadState.tag === 'offline' && score > bestScore
   const showPrompt =
     submitState.tag === 'idle' &&
@@ -266,7 +222,7 @@ export const GameOverOverlay = ({ open }: Props) => {
               {showPrompt && (
                 <InitialsInput
                   onSubmit={handleSubmit}
-                  disabled={submitState.tag === 'submitting'}
+                  disabled={isSubmitting}
                 />
               )}
 
