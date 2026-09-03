@@ -217,6 +217,7 @@ export const usePixiGame = () => {
   const playNearMissRef = useRef(playNearMiss);
 
   const statusRef = useRef<GameStatus>(status);
+  const prevStatusRef = useRef<GameStatus>(status);
   const endRef = useRef(end);
   const setLiveScoreRef = useRef(setLiveScore);
   const startRef = useRef(start);
@@ -473,8 +474,7 @@ export const usePixiGame = () => {
 
   const handleGameOver = useCallback(() => {
     endRef.current?.(scoreRef.current);
-    resetGame();
-  }, [resetGame]);
+  }, []);
 
   const updateGame = useCallback(
     (ticker: Ticker) => {
@@ -671,6 +671,13 @@ export const usePixiGame = () => {
       syncLiveScore,
     ],
   );
+
+  useEffect(() => {
+    if (status === "running" && prevStatusRef.current === "over") {
+      resetGame();
+    }
+    prevStatusRef.current = status;
+  }, [status, resetGame]);
 
   useEffect(() => {
     const host = canvasRef.current;
