@@ -15,15 +15,17 @@ import { DEFAULT_CONFIG } from "./types";
 import {
   type Rect,
   HITBOX_CONFIG,
-  NEAR_MISS_THRESHOLD,
-  computePipeGap,
-  computePipeSpeed,
-  computePipeSpacing,
   createInsetRectangle,
   getCeilingZone,
   getFloorZone,
-  intersects,
 } from "./runGeometry";
+import {
+  type RunState,
+  type RunInput,
+  type PipePairState,
+  resetRun,
+  stepRun,
+} from "./stepRun";
 import { useGame } from "../context/useGameContext";
 import type { GameStatus } from "../context/types";
 import { usePixiInputs } from "../hooks/usePixiInputs";
@@ -149,13 +151,9 @@ export const usePixiGame = () => {
   const backgroundRef = useRef<Graphics | null>(null);
   const debugGraphicsRef = useRef<Graphics | null>(null);
   const debugModeRef = useRef(false);
-  const floorRectRef = useRef<Rect | null>(null);
-  const ceilingRectRef = useRef<Rect | null>(null);
-  const velocityRef = useRef(0);
-  const scoreRef = useRef(0);
-  const lastReportedScoreRef = useRef(0);
-  const elapsedRef = useRef(0);
-  const difficultyRef = useRef(0);
+  const runStateRef = useRef<RunState | null>(null);
+  const flapPendingRef = useRef(false);
+  const pixiPipeMapRef = useRef<Map<number, PipePair>>(new Map());
   const shakeRef = useRef(0);
   const particlesRef = useRef<Particle[]>([]);
   const particleGraphicsRef = useRef<Graphics | null>(null);
@@ -203,23 +201,20 @@ export const usePixiGame = () => {
     playNearMissRef.current = playNearMiss;
   }, [playNearMiss]);
 
-  const syncLiveScore = useCallback(() => {
-    if (statusRef.current !== "running") return;
-    if (lastReportedScoreRef.current !== scoreRef.current) {
-      lastReportedScoreRef.current = scoreRef.current;
-      setLiveScoreRef.current?.(scoreRef.current);
-    }
-  }, []);
-
   const handleFlap = useCallback(() => {
     if (statusRef.current === "idle") {
       startRef.current?.();
       statusRef.current = "running";
-      elapsedRef.current = 0;
-      difficultyRef.current = 0;
+      const app = appRef.current;
+      if (app) {
+        runStateRef.current = resetRun({
+          width: app.renderer.width,
+          height: app.renderer.height,
+        });
+      }
     }
     if (statusRef.current !== "running") return;
-    velocityRef.current = DEFAULT_CONFIG.flapStrength;
+    flapPendingRef.current = true;
   }, []);
 
   const handleToggleDebug = useCallback(() => {
@@ -373,20 +368,7 @@ export const usePixiGame = () => {
     return container;
   }, []);
 
-  const checkPipeCollision = useCallback(
-    (catHitbox: Rect, pipe: PipePair) =>
-      pipe.children.some((child) =>
-        intersects(catHitbox, getPipeHitbox(child as PipeChild)),
-      ),
-    [],
-  );
-
   const resetGame = useCallback(() => {
-    velocityRef.current = 0;
-    scoreRef.current = 0;
-    lastReportedScoreRef.current = 0;
-    elapsedRef.current = 0;
-    difficultyRef.current = 0;
     shakeRef.current = 0;
     const app = appRef.current;
     if (app) {
@@ -396,6 +378,10 @@ export const usePixiGame = () => {
         app.stage.removeChild(f.text);
         f.text.destroy();
       }
+      runStateRef.current = resetRun({
+        width: app.renderer.width,
+        height: app.renderer.height,
+      });
     }
     scoreFlashesRef.current = [];
     catFadeRef.current = 0;
@@ -410,8 +396,9 @@ export const usePixiGame = () => {
     if (pipesRef.current) {
       pipesRef.current.removeChildren();
     }
-    syncLiveScore();
-  }, [syncLiveScore]);
+    pixiPipeMapRef.current.clear();
+    setLiveScoreRef.current?.(0);
+  }, []);
 
   const spawnDeathParticles = useCallback((x: number, y: number) => {
     const colors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xc084fc];
@@ -429,11 +416,6 @@ export const usePixiGame = () => {
         life: PARTICLE_BASE_LIFE + Math.random() * PARTICLE_LIFE_JITTER,
       });
     }
-  }, []);
-
-  const handleGameOver = useCallback(() => {
-    catFadeRef.current = CAT_FADE_DURATION;
-    endRef.current?.(scoreRef.current);
   }, []);
 
   const updateGame = useCallback(
@@ -494,51 +476,80 @@ export const usePixiGame = () => {
 
       if (statusRef.current !== "running") return;
 
-      elapsedRef.current += ticker.deltaMS;
-      const targetDifficulty = Math.floor(elapsedRef.current / 10000);
-      if (targetDifficulty > difficultyRef.current) {
-        difficultyRef.current = targetDifficulty;
+      const runState = runStateRef.current;
+      if (!runState) return;
+
+      // --- Build input ---
+      const spawnCenterY =
+        DEFAULT_CONFIG.pipe.minY +
+        Math.random() * (DEFAULT_CONFIG.pipe.maxY - DEFAULT_CONFIG.pipe.minY);
+      const input: RunInput = {
+        flap: flapPendingRef.current,
+        spawnCenterY,
+      };
+      flapPendingRef.current = false;
+
+      // --- Step pure simulation ---
+      const { state: newState, events } = stepRun(runState, input, delta);
+      runStateRef.current = newState;
+
+      // --- Dispatch events ---
+      for (const event of events) {
+        if (event.type === "scored") {
+          playPipe?.();
+          setLiveScoreRef.current?.(event.score);
+          const flash = new Text({ text: "+1", style: SCORE_FLASH_STYLE });
+          flash.anchor.set(0.5);
+          flash.position.set(cat.x + 30, cat.y - 20);
+          app.stage.addChild(flash);
+          scoreFlashesRef.current.push({
+            text: flash,
+            vy: SCORE_FLASH_VY,
+            life: SCORE_FLASH_LIFE,
+            totalLife: SCORE_FLASH_LIFE,
+          });
+        } else if (event.type === "near-miss") {
+          playNearMissRef.current?.();
+        } else if (event.type === "death") {
+          playDeath?.();
+          spawnDeathParticles(event.x, event.y);
+          shakeRef.current = SHAKE_DURATION;
+          catFadeRef.current = CAT_FADE_DURATION;
+          endRef.current?.(newState.score);
+          return;
+        }
       }
 
-      const difficulty = difficultyRef.current;
-
-      velocityRef.current += DEFAULT_CONFIG.gravity * delta;
-      velocityRef.current = Math.min(
-        velocityRef.current,
-        DEFAULT_CONFIG.terminalVelocity,
-      );
-      cat.y += velocityRef.current * delta;
-
-      // Update cat sprite frame based on state
-      const frameIndex = getCatFrame(statusRef.current, velocityRef.current);
+      // --- Render from RunState ---
+      cat.y = newState.catY;
+      const frameIndex = getCatFrame(statusRef.current, newState.velocity);
       if (catFramesRef.current[frameIndex]) {
         cat.texture = catFramesRef.current[frameIndex];
       }
 
-      const ceilingZone =
-        ceilingRectRef.current ?? getCeilingZone(app.renderer.width);
-      const floorZone =
-        floorRectRef.current ??
-        getFloorZone(app.renderer.width, app.renderer.height);
-      ceilingRectRef.current = ceilingZone;
-      floorRectRef.current = floorZone;
-
-      const catHitbox = getCatHitbox(cat);
-      if (
-        intersects(catHitbox, ceilingZone) ||
-        intersects(catHitbox, floorZone)
-      ) {
-        playDeath?.();
-        spawnDeathParticles(cat.x, cat.y);
-        shakeRef.current = SHAKE_DURATION;
-        handleGameOver();
-        return;
+      // Sync Pixi pipe containers from RunState.pipes
+      const activeIds = new Set(newState.pipes.map((p: PipePairState) => p.id));
+      for (const [id, container] of pixiPipeMapRef.current) {
+        if (!activeIds.has(id)) {
+          pipes.removeChild(container);
+          pixiPipeMapRef.current.delete(id);
+        }
+      }
+      for (const pipeSt of newState.pipes) {
+        if (!pixiPipeMapRef.current.has(pipeSt.id)) {
+          const container = createPipePair(pipeSt.centerY, pipeSt.gap);
+          pixiPipeMapRef.current.set(pipeSt.id, container);
+          pipes.addChild(container);
+        }
+        pixiPipeMapRef.current.get(pipeSt.id)!.x = pipeSt.x;
       }
 
+      // Background pulse
       if (background) {
         background.alpha = 0.85 + 0.05 * Math.sin(performance.now() / 700);
       }
 
+      // Trail
       trail.clear();
       for (let i = 0; i < rainbowColors.length; i += 1) {
         trail.lineStyle(
@@ -550,68 +561,16 @@ export const usePixiGame = () => {
         trail.lineTo(cat.x - 160, cat.y + i * 7 - 14);
       }
 
-      const pipeSpeed = computePipeSpeed(scoreRef.current, difficulty);
-      const spacing = computePipeSpacing(scoreRef.current, difficulty);
-      const pipePairs = pipes.children as PipePair[];
-
-      for (let i = pipePairs.length - 1; i >= 0; i -= 1) {
-        const pipe = pipePairs[i];
-        pipe.x -= pipeSpeed * delta;
-
-        if (!pipe.scored && pipe.x + DEFAULT_CONFIG.pipe.width < cat.x) {
-          pipe.scored = true;
-          scoreRef.current += 1;
-          playPipe?.();
-          syncLiveScore();
-
-          // Near-miss detection
-          const topEdge = pipe.centerY - pipe.gap / 2;
-          const bottomEdge = pipe.centerY + pipe.gap / 2;
-          const minDist = Math.min(cat.y - topEdge, bottomEdge - cat.y);
-          if (minDist > 0 && minDist < NEAR_MISS_THRESHOLD) {
-            playNearMissRef.current?.();
-          }
-
-          // Score flash
-          const flash = new Text({ text: '+1', style: SCORE_FLASH_STYLE });
-          flash.anchor.set(0.5);
-          flash.position.set(cat.x + 30, cat.y - 20);
-          app.stage.addChild(flash);
-          scoreFlashesRef.current.push({ text: flash, vy: SCORE_FLASH_VY, life: SCORE_FLASH_LIFE, totalLife: SCORE_FLASH_LIFE });
-        }
-
-        if (pipe.x < -DEFAULT_CONFIG.pipe.width * 2) {
-          pipes.removeChild(pipe);
-        }
-      }
-
-      const lastPipe = pipePairs[pipePairs.length - 1];
-      if (!lastPipe || lastPipe.x < getConstrainedWidth() - spacing) {
-        const gap = computePipeGap(scoreRef.current, difficulty);
-        const y =
-          DEFAULT_CONFIG.pipe.minY +
-          Math.random() * (DEFAULT_CONFIG.pipe.maxY - DEFAULT_CONFIG.pipe.minY);
-        pipes.addChild(createPipePair(y, gap));
-      }
-
-      const hasCollision = pipePairs.some((pipe) =>
-        checkPipeCollision(catHitbox, pipe),
-      );
-      if (hasCollision) {
-        playDeath?.();
-        spawnDeathParticles(cat.x, cat.y);
-        shakeRef.current = SHAKE_DURATION;
-        handleGameOver();
-      }
-
-      // Debug mode: draw hitboxes
+      // Debug hitboxes
       const debugGraphics = debugGraphicsRef.current;
       if (debugGraphics) {
         debugGraphics.clear();
         if (debugModeRef.current) {
-          drawHitbox(debugGraphics, catHitbox, DEBUG_COLORS.cat);
-          pipePairs.forEach((pipe) => {
-            pipe.children.forEach((child) => {
+          const ceilingZone = getCeilingZone(app.renderer.width);
+          const floorZone = getFloorZone(app.renderer.width, app.renderer.height);
+          drawHitbox(debugGraphics, getCatHitbox(cat), DEBUG_COLORS.cat);
+          for (const [, container] of pixiPipeMapRef.current) {
+            container.children.forEach((child) => {
               drawHitbox(
                 debugGraphics,
                 getPipeHitbox(child as PipeChild),
@@ -619,21 +578,13 @@ export const usePixiGame = () => {
                 0.1,
               );
             });
-          });
+          }
           drawHitbox(debugGraphics, floorZone, DEBUG_COLORS.bounds, 0.08);
           drawHitbox(debugGraphics, ceilingZone, DEBUG_COLORS.bounds, 0.08);
         }
       }
     },
-    [
-      checkPipeCollision,
-      createPipePair,
-      handleGameOver,
-      playDeath,
-      playPipe,
-      spawnDeathParticles,
-      syncLiveScore,
-    ],
+    [createPipePair, playDeath, playPipe, spawnDeathParticles],
   );
 
   useEffect(() => {
