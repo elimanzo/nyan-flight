@@ -209,8 +209,6 @@ export const GameOverOverlay = ({ open }: Props) => {
 
             {/* Leaderboard section */}
             <div className="mt-6">
-              {(loadState.tag === 'loading' || isSubmitting) && <LeaderboardSkeleton />}
-
               {loadState.tag === 'offline' && (
                 <p className="text-xs text-white/40">
                   Leaderboard offline — scores unavailable
@@ -224,16 +222,20 @@ export const GameOverOverlay = ({ open }: Props) => {
                 />
               )}
 
-              {boardToShow && !isSubmitting && (
-                <LeaderboardTable
-                  board={boardToShow}
-                  highlight={
-                    submitState.tag === 'done'
-                      ? { initials: submitState.initials, score: submitState.score }
-                      : undefined
-                  }
-                />
-              )}
+              <div className="max-h-48 overflow-y-auto">
+                {(loadState.tag === 'loading' || isSubmitting) && <LeaderboardSkeleton />}
+
+                {boardToShow && !isSubmitting && (
+                  <LeaderboardTable
+                    board={boardToShow}
+                    highlight={
+                      submitState.tag === 'done'
+                        ? { initials: submitState.initials, score: submitState.score }
+                        : undefined
+                    }
+                  />
+                )}
+              </div>
             </div>
 
             <div className="mt-8">
