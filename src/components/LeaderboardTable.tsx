@@ -1,8 +1,8 @@
 import type { BoardEntry } from '../leaderboard/types'
 
 const tableClass = "mt-4 w-full table-fixed text-sm"
-const colNum = "w-8"
-const colInitials = "w-20"
+const colNum = "w-10"
+const colInitials = "w-24"
 
 export function LeaderboardSkeleton({ rows = 10 }: { rows?: number }) {
   return (
