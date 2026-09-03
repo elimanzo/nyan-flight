@@ -106,7 +106,7 @@ const getCatFrame = (status: GameStatus, velocity: number): number => {
 };
 
 const computePipeGap = (score: number, difficulty: number) =>
-  Math.max(PIPE_GAP_BASE - score * 6 - difficulty * 14, 130);
+  Math.max(PIPE_GAP_BASE - score * 6 - difficulty * 14, 175);
 const computePipeSpeed = (score: number, difficulty: number) =>
   Math.min(DEFAULT_CONFIG.pipe.speed + score * 0.035 + difficulty * 0.2, 5.5);
 const computePipeSpacing = (score: number, difficulty: number) =>
