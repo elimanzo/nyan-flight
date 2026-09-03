@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { InMemoryLeaderboardSource } from "../leaderboard/InMemoryLeaderboardSource";
-import { LeaderboardService } from "../leaderboard/LeaderboardService";
+import { LeaderboardService, MAX_SCORE } from "../leaderboard/LeaderboardService";
 
 let source: InMemoryLeaderboardSource;
 let service: LeaderboardService;
@@ -50,5 +50,25 @@ describe("LeaderboardService – qualifies", () => {
   it("does not qualify when score is below #10", async () => {
     await fill([100, 90, 80, 70, 60, 50, 40, 30, 20, 10]);
     expect(await service.qualifies(5)).toBe(false);
+  });
+});
+
+describe("LeaderboardService – sanity cap", () => {
+  it("accepts score at MAX_SCORE", async () => {
+    await expect(
+      service.submit({ initials: "AAA", score: MAX_SCORE }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects score above MAX_SCORE", async () => {
+    await expect(
+      service.submit({ initials: "AAA", score: MAX_SCORE + 1 }),
+    ).rejects.toThrow(RangeError);
+  });
+
+  it("rejects negative score", async () => {
+    await expect(
+      service.submit({ initials: "AAA", score: -1 }),
+    ).rejects.toThrow(RangeError);
   });
 });

@@ -1,15 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 
+import { readBestScore, writeBestScore } from "../leaderboard/bestScore";
 import type { GameContextValue, GameStatus } from "./types";
 
 export const useGameState = (): GameContextValue => {
   const [status, setStatus] = useState<GameStatus>("idle");
   const [score, setScore] = useState(0);
-  const [bestScore, setBestScore] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    const stored = window.localStorage.getItem("nyan-best-score");
-    return stored ? Number.parseInt(stored, 10) || 0 : 0;
-  });
+  const [bestScore, setBestScore] = useState(() => readBestScore());
   const [debugEnabled, setDebugEnabled] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = window.localStorage.getItem("nyan-debug-enabled");
@@ -33,9 +30,7 @@ export const useGameState = (): GameContextValue => {
     setScore(finalScore);
     setBestScore((prev) => {
       const next = Math.max(prev, finalScore);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("nyan-best-score", String(next));
-      }
+      writeBestScore(next);
       return next;
     });
     setStatus("over");

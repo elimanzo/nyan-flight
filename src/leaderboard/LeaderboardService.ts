@@ -1,13 +1,21 @@
 import type { BoardEntry, LeaderboardSource } from "./types";
 
+export const MAX_SCORE = 9_999;
+
 export class LeaderboardService {
-  constructor(private readonly source: LeaderboardSource) {}
+  private source: LeaderboardSource;
+  constructor(source: LeaderboardSource) {
+    this.source = source;
+  }
 
   async fetchTop(n: number): Promise<BoardEntry[]> {
     return this.source.fetchTop(n);
   }
 
   async submit(entry: BoardEntry): Promise<void> {
+    if (entry.score < 0 || entry.score > MAX_SCORE) {
+      throw new RangeError(`Score ${entry.score} outside valid range [0, ${MAX_SCORE}]`);
+    }
     return this.source.submit(entry);
   }
 
