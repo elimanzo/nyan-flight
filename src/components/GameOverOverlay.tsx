@@ -222,7 +222,7 @@ export const GameOverOverlay = ({ open }: Props) => {
                 />
               )}
 
-              <div className="max-h-48 overflow-y-auto">
+              <div className="max-h-48 overflow-y-auto pr-5">
                 {(loadState.tag === 'loading' || isSubmitting) && <LeaderboardSkeleton />}
 
                 {boardToShow && !isSubmitting && (
